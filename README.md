@@ -1,4 +1,4 @@
-# WifiGod v1.3
+# WifiGod v1.5
 Coded and Developed by Blackhole
 Github: https://www.github.com/blacholesec
 
@@ -32,3 +32,7 @@ Need to knows:
     -When Scanning a remote network for devices, it is imperative that you are
      able to connect to the internet. This is because the program looks up the
      found MAC addresses in a MAC Address Vendor Database.
+- 
+Known Issues:
+ .For stronger networks Full network compromise will only slow the connections (This is being rectified)
+ .Entire Network Compromise Seems to Only be able to control one device at a time do to ARP (This is being rectified)
