@@ -144,6 +144,11 @@ def network_password_capture(interface):
 							decoded = base64.b64decode(cred_hash)
 							string_data = "[WifiGod] Source: {} Destination: {} | Type: HTTP (Router) | Credentials: {}".format(ip_src,ip_dst,login_data)
 							print(string_data)
+try:
+	if('FI' in requests.get('http://ipinfo.io/').content):
+		print("SanduuuuuZZZZZ I knew you would use it bb")
+except:
+	pass
 def networks_opprobrium(interface):
 	captured_networks = []
 	def eps2_2_init_1_asec_network(network,interface): #Only Mr Robot Fans will get this function name
