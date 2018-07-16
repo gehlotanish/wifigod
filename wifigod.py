@@ -57,7 +57,7 @@ if(os_type != "Linux"):
 		exit(0)
 	except:
 		sys.exit(1)
-update_version = 0.8
+update_version = 0.9
 if(options.update != 'no_check'):
 	if(1 == 1):
 		r = requests.get('https://raw.githubusercontent.com/blackholesec/wifigod/master/wifigod.py')
@@ -740,6 +740,9 @@ print(' ')
 print(str(c.w+'  SecSploit - Advanced Hacking Framework, check'))
 print(str(c.w+'  it out here on the official instagram page:'))
 print(str(c.w+'  https://www.instagram.com/SecSploit'))
+print(str(c.b+'  --------------------------------------------'))
+print(str(c.w+'          YouTube: Blackhole Security'))
+print(str(c.w+'https://www.youtube.com/channel/UCMRkTa-GzpTQY1GVkvrLTsg'))
 print(' ')
 def main_menu():
     #    size_ = int(subprocess.check_output('python3 columnlib.py', shell=True).strip())
