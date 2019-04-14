@@ -1,6 +1,6 @@
 # WifiGod v1.5
 Coded and Developed by Blackhole
-Github: https://www.github.com/blacholesec
+Github: https://www.github.com/blackholesec
 
 About the Tool:
  WifiGod is a tool coded and developing by Blackhole, it is written in the Python
