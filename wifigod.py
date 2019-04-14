@@ -50,7 +50,7 @@ parser = optparse.OptionParser()
 parser.add_option('-u', '--update', action='store_false', dest='update', help="Check for new updates", default="no_check")
 (options,args) = parser.parse_args()
 os_type = platform.system()
-contact_email = 'BlackholeSecurity@protonmail.com'
+contact_email = 'Instagram - @SSploit'
 if(os_type != "Linux"):
 	print("Error. This is designed for Linux Operating Systems Only!")
 	try:
